@@ -321,6 +321,14 @@ describe('mount selection', () => {
     expect(m.middlewares).toHaveLength(1); // MCP only
   });
 
+  it('mcp: false mounts standalone without the MCP middleware', () => {
+    const plugins = svelteDevtools({ mcp: false });
+    resolve(plugins);
+    const m = mockServer();
+    callHook(plugins[0]!.configureServer, m.server);
+    expect(m.middlewares).toHaveLength(1); // standalone devframe only
+  });
+
   it('standalone answers 503 for the DevTools base before the server listens', () => {
     const plugins = svelteDevtools();
     resolve(plugins);
