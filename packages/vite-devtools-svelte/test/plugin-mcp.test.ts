@@ -12,6 +12,7 @@ import { isValidMcpToken } from '../src/mcp/http.js';
 import { listServers } from '../src/mcp/registry.js';
 import * as mcpToolsModule from '../src/mcp/tools.js';
 import { svelteDevtools } from '../src/plugin.js';
+import type { SvelteDevtoolsOptions } from '../src/plugin.js';
 import { callHook, resolvePlugins } from './helpers.js';
 
 vi.mock('../src/mcp/tools.js', async importOriginal => {
@@ -25,8 +26,8 @@ const SUBSCRIPTION = 'svelte-devtools:subscription';
 
 type Handler = (req: unknown, res: unknown) => void;
 
-function setup(serverConfig: Record<string, unknown> = {}) {
-  const plugins: Plugin[] = svelteDevtools();
+function startServer(serverConfig: Record<string, unknown>, options?: SvelteDevtoolsOptions) {
+  const plugins: Plugin[] = svelteDevtools(options);
   // Hosted by the Vite DevTools hub: no standalone devframe mount, so the
   // MCP endpoint is the only middleware.
   resolvePlugins(plugins, { root: FIXTURES, plugins: [{ name: 'vite:devtools' }] });
@@ -49,14 +50,21 @@ function setup(serverConfig: Record<string, unknown> = {}) {
     environments: {},
   };
   callHook(plugins[0]!.configureServer, server);
+  const token = (
+    plugins[0]!.api as { getDevtoolsToken: () => string | undefined }
+  ).getDevtoolsToken();
+  return { server, httpServer, routes, listeners, token };
+}
+
+function setup(serverConfig: Record<string, unknown> = {}) {
+  const { server, httpServer, routes, listeners, token } = startServer(serverConfig);
   const [path, handler] = routes.find(([p]) => p === MCP_PATH) ?? [];
   expect(path).toBe(MCP_PATH);
-  const token = (plugins[0]!.api as { getDevtoolsToken: () => string }).getDevtoolsToken();
   return {
     server,
     httpServer,
     handler: handler!,
-    token,
+    token: token!,
     subscriptions: () => server.hot.send.mock.calls.filter(([event]) => event === SUBSCRIPTION),
     /** The runtime's activation snapshot ends with a `reset: true` timeline. */
     sendSnapshot: () =>
@@ -444,6 +452,17 @@ describe('MCP registration', () => {
     s.httpServer.address = () => address;
     s.httpServer.emit('listening');
     expect(s.server.config.logger.info).not.toHaveBeenCalled();
+    expect(listServers(dir)).toEqual([]);
+  });
+
+  it('mcp: false serves no endpoint, registers nothing and prints nothing', () => {
+    const s = startServer({}, { mcp: false });
+    s.httpServer.address = () => ({ address: '::1', family: 'IPv6', port: 5173 });
+    s.httpServer.emit('listening');
+    expect(s.routes).toEqual([]);
+    expect(s.token).toBeUndefined();
+    expect(s.server.config.logger.info).not.toHaveBeenCalled();
+    expect(s.server.config.logger.warn).not.toHaveBeenCalled();
     expect(listServers(dir)).toEqual([]);
   });
 });

@@ -80,6 +80,15 @@ export interface SvelteDevtoolsOptions {
    * turn that one off.
    */
   inspector?: InspectorOptions;
+  /**
+   * Serve the MCP endpoint that AI agents use (`vite-devtools-svelte mcp`).
+   * Set `false` to skip it: the dev server then has no endpoint, writes no
+   * entry to `~/.cache/vite-devtools-svelte/servers/` and prints no
+   * registration command, and `api.getDevtoolsToken()` returns `undefined`.
+   * The DevTools panels work either way.
+   * @default true
+   */
+  mcp?: boolean;
 }
 
 /** When `@vitejs/devtools`' config plugin is present, the hub calls our `devtools.setup`. */
@@ -119,7 +128,7 @@ function collectModules(server: ViteDevServer): GraphModuleLike[] {
 }
 
 export function svelteDevtools(options: SvelteDevtoolsOptions = {}): Plugin[] {
-  const { componentTracking = true, clientAuth = true } = options;
+  const { componentTracking = true, clientAuth = true, mcp = true } = options;
 
   let config: ResolvedConfig;
   let server: ViteDevServer | undefined;
@@ -135,7 +144,7 @@ export function svelteDevtools(options: SvelteDevtoolsOptions = {}): Plugin[] {
   const serving = () => config?.command === 'serve';
   // MCP clients are local processes, not browser tabs, so they cannot use
   // devframe's browser auth handshake.
-  const mcpToken = crypto.randomUUID();
+  const mcpToken = mcp ? crypto.randomUUID() : undefined;
 
   // Built lazily: `root` is resolved later.
   let sessions: SessionStore | null = null;
@@ -212,6 +221,8 @@ export function svelteDevtools(options: SvelteDevtoolsOptions = {}): Plugin[] {
         const dispose = mountStandalone(devServer, devframe, { auth: clientAuth });
         if (dispose) middlewareModeMounts.push({ generation, dispose });
       }
+
+      if (!mcpToken) return;
 
       // The resolved port is known only once the server is listening.
       devServer.httpServer?.once('listening', () => {

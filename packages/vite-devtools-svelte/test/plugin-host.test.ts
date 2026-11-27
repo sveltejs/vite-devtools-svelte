@@ -74,7 +74,8 @@ function setup(
     watch,
     configure: () => callHook(plugins[0]!.configureServer, server),
     mcp: () => routes.find(([p]) => p === '/__svelte-devtools/mcp')![1],
-    token: () => (plugins[0]!.api as { getDevtoolsToken: () => string }).getDevtoolsToken(),
+    token: () =>
+      (plugins[0]!.api as { getDevtoolsToken: () => string | undefined }).getDevtoolsToken(),
   };
 }
 

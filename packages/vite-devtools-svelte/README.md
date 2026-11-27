@@ -47,6 +47,8 @@ claude mcp add svelte-devtools -- npx @sveltejs/vite-devtools-svelte mcp
 
 When the dev server runs in a container, on another machine, or in Vite middleware mode, pass its URL and token with the `VITE_DEVTOOLS_SVELTE_URL` and `VITE_DEVTOOLS_SVELTE_TOKEN` environment variables. The token is the `token` in `~/.cache/vite-devtools-svelte/servers/`, or `api.getDevtoolsToken()` on the plugin named `vite-devtools-svelte`. It changes on every dev-server start, so register again after a restart.
 
+If you don't use it, turn the endpoint off with `svelteDevtools({ mcp: false })`: the dev server then serves no endpoint, writes nothing to `~/.cache/vite-devtools-svelte/servers/` and prints no registration command.
+
 Agent skills for performance audits ship in `node_modules/@sveltejs/vite-devtools-svelte/skills/`. Copy them to `.claude/skills/` to use them.
 
 ## License
